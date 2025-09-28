@@ -7,7 +7,7 @@
 5. To load the data to the stage layer and perform transformations
 6. To load the data into base tables and implement SCD type 2 in dimension tables
 
-<a name = 'project-setup'></a>
+<a id = 'project-setup'></a>
 ## 1. Project setup:
 Creation of required database objects,
 
@@ -300,5 +300,5 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
     FOREIGN KEY ("ADD_SCD_ID") REFERENCES INSURANCE_PROJECT.INSURANCE.ADDRESS_D ("SCD_ID")
 );
 ```
-<a name = 'datalake-setup'></a>
+<a id = 'datalake-setup'></a>
 ## 2. Setting up datalake for file loading:
