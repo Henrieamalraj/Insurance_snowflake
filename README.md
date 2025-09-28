@@ -23,6 +23,7 @@ CREATE DATABASE Insurance_project;
 Schema creation,
 ```
 --Setting context to appropriate database
+
 USE Insurance_project;
 
 CREATE SCHEMA config;
@@ -35,6 +36,7 @@ Creation of raw data tables (RAW_US_CENTRAL,RAW_US_OTHERS,RAW_US_MERGED),
 
 ```
 --Setting context and creating required tables
+
 USE Insurance_project.raw;
 
 /*###############################################    RAW_US_CENTRAL   ###############################################*/
@@ -142,6 +144,7 @@ Creation of stage tables (STG_CUSTOMER_D,STG_POLICY_D,STG_ADDRESS_D,STG_TRANSACT
 
 ```
 --Setting context and creating required tables
+
 USE Insurance_project.stg;
 
 /*###############################################    STG_CUSTOMER_D   ###############################################*/
@@ -206,6 +209,7 @@ Creation of streams,
 
 ```
 --Setting context
+
 USE SCHEMA STG;
 
 CREATE OR REPLACE STREAM CUSTOMER_STREAM_INSERT ON TABLE INSURANCE_PROJECT.STG.STG_CUSTOMER_D;
@@ -241,6 +245,7 @@ Creation of base tables with constraints and auto incremental columns,
 
 ```
 --Setting context and creating required tables
+
 USE Insurance_project.INSURANCE;
 
 /*###############################################    CUSTOMER_D   ###############################################*/
