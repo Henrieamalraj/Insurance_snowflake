@@ -310,3 +310,32 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
 
 <a id = "copy-data-setup"></a>
 ## 3. Copying data from external storage:
+
+Creation of required database objects in snowflake to copy data from AWS s3 bucket (external stage),
+
+Here, we use Account Admin role for object creation,
+
+```
+--Set ACCOUNTADMIN role
+USE ROLE ACCOUNTADMIN;
+
+--Setting context
+USE DATABASE Insurance_project;
+USE SCHEMA raw;
+
+--Checking the region
+SELECT CURRENT_REGION(); --AWS_US_EAST_1
+
+--Storage integration creation
+CREATE STORAGE INTEGRATION insurance_s3_full_access_storage_integration
+TYPE = EXTERNAL_STAGE STORAGE_PROVIDER = 'S3'
+ENABLED = TRUE STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::866018955955:role/insurance_sf_full_access_role' --AWS role arn
+STORAGE_ALLOWED_LOCATIONS = ('*');
+
+DESC INTEGRATION insurance_s3_full_access_storage_integration;
+
+--Required information from storage integration to update the AWS role trust policy
+    --STORAGE_AWS_IAM_USER_ARN = arn:aws:iam::285177568129:user/znb51000-s
+    --STORAGE_AWS_EXTERNAL_ID = GDC17730_SFCRole=7_xQFrQez9wTzDoOvXQjafzxh6F6g=
+
+```
