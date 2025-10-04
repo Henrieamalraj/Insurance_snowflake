@@ -1,7 +1,6 @@
 # Insurance Snowflake Project
 ### To create an end to end data flow to achieve the following process:
-1. [Project setup](##project-setup)
-2. <a href = "https://github.com/Henrieamalraj/Insurance_snowflake/edit/main/README.md#1-project-setup">Project setup</a>- Creation of required database objects in Snowflake
+1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
 3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
 4. [Copying data from external storage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
 5. To clean the data with proper structure and data type
@@ -341,4 +340,33 @@ DESC INTEGRATION insurance_s3_full_access_storage_integration;
     --STORAGE_AWS_IAM_USER_ARN = arn:aws:iam::285177568129:user/znb51000-s
     --STORAGE_AWS_EXTERNAL_ID = GDC17730_SFCRole=7_xQFrQez9wTzDoOvXQjafzxh6F6g=
 
+--File format creation
+CREATE OR REPLACE FILE FORMAT csv_ff SKIP_HEADER = 1 FIELD_DELIMITER = ',' RECORD_DELIMITER = '\n' FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+--MULTI_LINE = TRUE
+TYPE = CSV;
+
+--External stage creation
+CREATE OR REPLACE STAGE raw_data_full_access STORAGE_INTEGRATION = insurance_s3_full_access_storage_integration URL = 's3://insurance-project-raw/CSV-files/' --S3 URI from S3 bucket
+FILE_FORMAT = csv_ff;
+
+--Auto ingestion of raw data using SQS event
+ --Creation of snowpipe
+CREATE OR REPLACE PIPE raw_data_load_east_003 AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*East.*\.csv';
+
+--Description of snowpipe
+DESC PIPE raw_data_load_east_003;
+--notification_channel => arn:aws:sqs:us-east-1:285177568129:sf-snowpipe-AIDAUEZPILOAZQHSIOWQQ-drKBia09OM3SdoL626Kbyg
+
+--Status of snowpipe
+SELECT SYSTEM$PIPE_STATUS('raw_data_load_east_003');
+
+--snowpipe operation
+ALTER PIPE raw_data_load_east_003
+SET PIPE_EXECUTION_PAUSED = FALSE;
+
+ALTER PIPE raw_data_load_east_003
+SET PIPE_EXECUTION_PAUSED = TRUE;
+
+ALTER PIPE raw_data_load_east_003 REFRESH;
 ```
