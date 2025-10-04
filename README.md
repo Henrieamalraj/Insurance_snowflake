@@ -316,6 +316,7 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
 Creation of required database objects in snowflake to copy data from AWS s3 bucket (external stage),
 
 Here, we use Account Admin role for object creation,
+
 Setting up the context,
 ```
 --Set ACCOUNTADMIN role
