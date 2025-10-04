@@ -2,7 +2,7 @@
 ### To create an end to end data flow to achieve the following process:
 1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
 3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
-4. [Copying data from external storage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
+4. [Copying data from external stage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
 5. To clean the data with proper structure and data type
 6. To load the data to the stage layer and perform transformations
 7. To load the data into base tables and implement SCD type 2 in dimension tables
@@ -311,12 +311,12 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
 ## 2. Setting up datalake for file loading:
 
 <a id = "copy-data-setup"></a>
-## 3. Copying data from external storage:
+## 3. Copying data from external stage:
 
 Creation of required database objects in snowflake to copy data from AWS s3 bucket (external stage),
 
 Here, we use Account Admin role for object creation,
-
+Setting up the context,
 ```
 --Set ACCOUNTADMIN role
 USE ROLE ACCOUNTADMIN;
@@ -327,7 +327,9 @@ USE SCHEMA raw;
 
 --Checking the region
 SELECT CURRENT_REGION(); --AWS_US_EAST_1
-
+```
+Creating storage integration to connect snowflake with AWS s3 bucket,
+```
 --Storage integration creation
 CREATE STORAGE INTEGRATION insurance_s3_full_access_storage_integration
 TYPE = EXTERNAL_STAGE STORAGE_PROVIDER = 'S3'
@@ -339,7 +341,9 @@ DESC INTEGRATION insurance_s3_full_access_storage_integration;
 --Required information from storage integration to update the AWS role trust policy
     --STORAGE_AWS_IAM_USER_ARN = arn:aws:iam::285177568129:user/znb51000-s
     --STORAGE_AWS_EXTERNAL_ID = GDC17730_SFCRole=7_xQFrQez9wTzDoOvXQjafzxh6F6g=
-
+```
+Creating file format and external stage on AWS s3 bucket to access the files,
+```
 --File format creation
 CREATE OR REPLACE FILE FORMAT csv_ff SKIP_HEADER = 1 FIELD_DELIMITER = ',' RECORD_DELIMITER = '\n' FIELD_OPTIONALLY_ENCLOSED_BY = '"'
 --MULTI_LINE = TRUE
@@ -348,16 +352,21 @@ TYPE = CSV;
 --External stage creation
 CREATE OR REPLACE STAGE raw_data_full_access STORAGE_INTEGRATION = insurance_s3_full_access_storage_integration URL = 's3://insurance-project-raw/CSV-files/' --S3 URI from S3 bucket
 FILE_FORMAT = csv_ff;
-
+'''
+Creating auto ingestion via snow pipe,
+'''
 --Auto ingestion of raw data using SQS event
  --Creation of snowpipe
-CREATE OR REPLACE PIPE raw_data_load_east_003 AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+CREATE OR REPLACE PIPE raw_data_load_east_003
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
 FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*East.*\.csv';
 
 --Description of snowpipe
 DESC PIPE raw_data_load_east_003;
 --notification_channel => arn:aws:sqs:us-east-1:285177568129:sf-snowpipe-AIDAUEZPILOAZQHSIOWQQ-drKBia09OM3SdoL626Kbyg
-
+```
+Operation and control on snow pipe,
+```
 --Status of snowpipe
 SELECT SYSTEM$PIPE_STATUS('raw_data_load_east_003');
 
