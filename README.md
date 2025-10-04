@@ -1,11 +1,14 @@
 # Insurance Snowflake Project
 ### To create an end to end data flow to achieve the following process:
-1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
-2. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
-3. [Copying data from external storage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
-4. To clean the data with proper structure and data type
-5. To load the data to the stage layer and perform transformations
-6. To load the data into base tables and implement SCD type 2 in dimension tables
+1. [Project setup](##project-setup)
+2. <a href = "https://github.com/Henrieamalraj/Insurance_snowflake/edit/main/README.md#1-project-setup">Project setup</a>- Creation of required database objects in Snowflake
+3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
+4. [Copying data from external storage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
+5. To clean the data with proper structure and data type
+6. To load the data to the stage layer and perform transformations
+7. To load the data into base tables and implement SCD type 2 in dimension tables
+
+   
 
 <a id = "project-setup"></a>
 ## 1. Project setup:
