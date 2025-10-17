@@ -27,7 +27,7 @@ This project demonstrates how to build a scalable **data pipeline in Snowflake**
 
 ## 🧰 Step-by-step guide
 
-### To create an end to end data flow to achieve the following process:
+### To create an end to end data flow follow the given steps:
 1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
 3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
 4. [Copying data from external stage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
