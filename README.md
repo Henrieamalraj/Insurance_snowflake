@@ -38,8 +38,6 @@ This project demonstrates how to build a scalable **data pipeline in Snowflake**
 <details>
 <summary><b>1️⃣ Project setup - Create Database, Schema and other required database objects</b> <i>(click to expand)</i> </summary>
 
-Creation of required database objects,
-
 Here, we use Account Admin role for object creation,
 ```sql
 USE ROLE ACCOUNTADMIN;
