@@ -1,4 +1,32 @@
-# Insurance Snowflake Project
+# ❄️ Insurance - Snowflake Project ❄️
+
+A complete end-to-end Snowflake data pipeline demonstrating ingestion, transformation, and analytics with insurance domain related data.
+
+## Tech Stacks used in this project
+
+<img width="320" height="77" alt="Snowflake_Logo" src="https://github.com/user-attachments/assets/88baf960-dab7-421a-8ca3-0d3f56e7be69" />
+
+<a href="https://www.snowflake.com/">Snowflake</a> is a cloud-native data platform built for fast, scalable data warehousing and analytics. It separates compute and storage, supports both structured and semi-structured data, and runs on AWS, Azure, and Google Cloud. Snowflake offers secure data sharing, near-zero maintenance, and high performance.
+
+## 📘 Table of Contents
+- [Overview](#overview)
+- [Architecture Diagram](#architecture-diagram)
+- [Setup Instructions](#setup-instructions)
+- [SQL Scripts](#sql-scripts)
+- [Contact](#contact)
+
+## 🧩 Overview
+This project demonstrates how to build a scalable **data pipeline in Snowflake** using:
+- Snowflake external stages (via AWS S3)  
+- Snowpipe for automated ingestion (auto ingestion)
+- Transformations using Snowflake Tasks & Streams (with SCD 2 implementaion)
+
+## 🏗️ Architecture Diagram
+![Snowflake Data Pipeline Diagram](images/snowflake_architecture.png)
+*(Place your image under the `/images` folder in the repo.)*
+
+## 🧰 Step-by-step guide
+
 ### To create an end to end data flow to achieve the following process:
 1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
 3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
@@ -6,24 +34,22 @@
 5. To clean the data with proper structure and data type
 6. To load the data to the stage layer and perform transformations
 7. To load the data into base tables and implement SCD type 2 in dimension tables
-
    
+<details>
+<summary><b>1️⃣ Project setup - Create Database, Schema and other required database objects</b> <i>(click to expand)</i> </summary>
 
-<a id = "project-setup"></a>
-## 1. Project setup:
 Creation of required database objects,
 
 Here, we use Account Admin role for object creation,
-
-```
+```sql
 USE ROLE ACCOUNTADMIN;
 ```
 Database creation,
-```
+```sql
 CREATE DATABASE Insurance_project;
 ```
 Schema creation,
-```
+```sql
 --Setting context to appropriate database
 
 USE Insurance_project;
@@ -36,7 +62,7 @@ CREATE SCHEMA Reporting;
 ```
 Creation of raw data tables (RAW_US_CENTRAL,RAW_US_OTHERS,RAW_US_MERGED),
 
-```
+```sql
 --Setting context and creating required tables
 
 USE Insurance_project.raw;
@@ -144,7 +170,7 @@ CREATE OR REPLACE TABLE RAW_US_MERGED (
 
 Creation of stage tables (STG_CUSTOMER_D,STG_POLICY_D,STG_ADDRESS_D,STG_TRANSACTION_F),
 
-```
+```sql
 --Setting context and creating required tables
 
 USE Insurance_project.stg;
@@ -209,7 +235,7 @@ CREATE OR REPLACE TABLE STG_TRANSACTION_F (
 ```
 Creation of streams,
 
-```
+```sql
 --Setting context
 
 USE SCHEMA STG;
@@ -229,7 +255,7 @@ CREATE OR REPLACE STREAM ADDRESS_STREAM_UPDATE ON TABLE INSURANCE_PROJECT.STG.ST
 
 Creation of sequence generators,
 
-```
+```sql
 --Setting context
 
 USE Insurance_project.INSURANCE;
@@ -245,7 +271,7 @@ CREATE OR REPLACE SEQUENCE INSURANCE_PROJECT.INSURANCE.ADDRESS_SEQ START = 00000
 
 Creation of base tables with constraints and auto incremental columns,
 
-```
+```sql
 --Setting context and creating required tables
 
 USE Insurance_project.INSURANCE;
@@ -307,6 +333,8 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
     FOREIGN KEY ("ADD_SCD_ID") REFERENCES INSURANCE_PROJECT.INSURANCE.ADDRESS_D ("SCD_ID")
 );
 ```
+</details>
+
 <a id = "datalake-setup"></a>
 ## 2. Setting up datalake for file loading:
 
@@ -380,3 +408,11 @@ SET PIPE_EXECUTION_PAUSED = TRUE;
 
 ALTER PIPE raw_data_load_east_003 REFRESH;
 ```
+
+## 📧 Contact
+
+Author: Henrie A
+
+LinkedIn: linkedin.com/in/henriea
+
+Email: ahenrie08@gmail.com
