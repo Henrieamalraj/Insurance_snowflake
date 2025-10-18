@@ -8,6 +8,11 @@ A complete end-to-end Snowflake data pipeline demonstrating ingestion, transform
 
 <a href="https://www.snowflake.com/">Snowflake</a> is a cloud-native data platform built for fast, scalable data warehousing and analytics. It separates compute and storage, supports both structured and semi-structured data, and runs on AWS, Azure, and Google Cloud. Snowflake offers secure data sharing, near-zero maintenance, and high performance.
 
+
+<img width="264" height="158" alt="Amazon_Web_Services_Logo" src="https://github.com/user-attachments/assets/ac24f187-e82d-4bfe-ba02-4fc03a4c4b5d" />
+
+<a href="https://aws.amazon.com/s3/">AWS S3 (Simple Storage Service)</a> is a highly scalable, durable, and secure object storage service for storing and retrieving any amount of data from anywhere. It’s widely used for static website hosting, backups, big data analytics, and cloud-native application storage.
+
 ## 📘 Table of Contents
 - [Overview](#overview)
 - [Architecture Diagram](#architecture-diagram)
@@ -22,10 +27,10 @@ This project demonstrates how to build a scalable **data pipeline in Snowflake**
 - Transformations using Snowflake Tasks & Streams (with SCD 2 implementaion)
 
 ## 🏗️ Architecture Diagram
-![Snowflake Data Pipeline Diagram](images/snowflake_architecture.png)
-*(Place your image under the `/images` folder in the repo.)*
 
-## 🧰 Step-by-step guide
+<img width="3191" height="1642" alt="Architecture-insurance-snowflake-project" src="https://github.com/user-attachments/assets/119fcfe9-897e-4bc8-8442-dbf5465ce9b7" />
+
+## 🧰 Step-by-step guide of implementation
 
 ### To create an end to end data flow follow the given steps:
 1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
