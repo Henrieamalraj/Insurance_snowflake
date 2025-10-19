@@ -474,25 +474,6 @@ ALTER PIPE p_raw_data_load_central REFRESH;
    ...
 </details>
 
---Description of snowpipe
-DESC PIPE raw_data_load_east_003;
---notification_channel => arn:aws:sqs:us-east-1:285177568129:sf-snowpipe-AIDAUEZPILOAZQHSIOWQQ-drKBia09OM3SdoL626Kbyg
-```
-Operation and control on snow pipe,
-```
---Status of snowpipe
-SELECT SYSTEM$PIPE_STATUS('raw_data_load_east_003');
-
---snowpipe operation
-ALTER PIPE raw_data_load_east_003
-SET PIPE_EXECUTION_PAUSED = FALSE;
-
-ALTER PIPE raw_data_load_east_003
-SET PIPE_EXECUTION_PAUSED = TRUE;
-
-ALTER PIPE raw_data_load_east_003 REFRESH;
-```
-
 ## 📧 Contact
 
 Author: Henrie A
