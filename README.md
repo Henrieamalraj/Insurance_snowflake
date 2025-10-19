@@ -31,17 +31,9 @@ This project demonstrates how to build a scalable **data pipeline in Snowflake**
 <img width="3191" height="1642" alt="Architecture-insurance-snowflake-project" src="https://github.com/user-attachments/assets/119fcfe9-897e-4bc8-8442-dbf5465ce9b7" />
 
 ## 🧰 Step-by-step guide of implementation
-
-### To create an end to end data flow follow the given steps:
-1. [Project setup](##project-setup) - Creation of required database objects in Snowflake
-3. [Setting up datalake for file loading](##datalake-setup) - To load source files into AWS s3 bucket
-4. [Copying data from external stage](##copy-data-setup) - To copy data from s3 bucket to Snowflake tables
-5. To clean the data with proper structure and data type
-6. To load the data to the stage layer and perform transformations
-7. To load the data into base tables and implement SCD type 2 in dimension tables
-   
+ 
 <details>
-<summary><b>1️⃣ Project setup - Create Database, Schema and other required database objects</b> <i>(click to expand)</i> </summary>
+<summary><b> 1️⃣ <code>Project setup</code> - Create Database, Schema and other required database objects</b> <i>(click to expand)</i> </summary>
 
 Here, we use Account Admin role for object creation,
 ```sql
@@ -338,10 +330,43 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
 ```
 </details>
 
-<a id = "datalake-setup"></a>
-## 2. Setting up datalake for file loading:
+<details>
+<summary><b> 2️⃣ <code>Datalake setup</code> - Raw file loading in AWS S3 bucket</b> <i>(click to expand)</i> </summary><br>
+1. Create an <a href ="https://aws.amazon.com/free/?all-free-tier.sort-by=item.additionalFields.SortRank&all-free-tier.sort-order=asc&awsf.Free%20Tier%20Types=*all&awsf.Free%20Tier%20Categories=categories%23compute&trk=007a06de-ab77-4a65-8196-aa4e3e97204c&sc_channel=ps&ef_id=Cj0KCQjw9czHBhCyARIsAFZlN8QNa0D1aZ8XCqqaN-seuMhSMlEWWmqif4j1cc1yfEC0LsYB55ETT_4aAnjaEALw_wcB:G:s&s_kwcid=AL!4422!3!476942607514!p!!g!!amazon%20web%20services%20cloud%20service!11542865500!116152064567&gad_campaignid=11542865500&gbraid=0AAAAADjHtp_tp0aqLn8sm-f_L_i0qLB4Z&gclid=Cj0KCQjw9czHBhCyARIsAFZlN8QNa0D1aZ8XCqqaN-seuMhSMlEWWmqif4j1cc1yfEC0LsYB55ETT_4aAnjaEALw_wcB"> AWS free tier account</a>.<br>
+2. Create a <a href ="https://docs.aws.amazon.com/quickstarts/latest/s3backup/step-1-create-bucket.html"> S3 bucket</a> with unique global name as shown below,<br>
 
-<a id = "copy-data-setup"></a>
+   <img width="1252" height="386" alt="image" src="https://github.com/user-attachments/assets/7f2fd90e-8ace-4afb-92de-8fabbbd9f570" /><br>
+3. Create a folder for storing the raw csv files and upload the files in S3 bucket from data folder as shown below,<br>
+
+   <img width="1896" height="432" alt="image" src="https://github.com/user-attachments/assets/a9b3c9ab-cbc0-47b8-bb2f-cc9e65cfde84" /><br>
+
+   <img width="1897" height="541" alt="image" src="https://github.com/user-attachments/assets/1213a752-c406-4ca9-9726-9d0547275ff0" /><br>
+
+
+   
+   
+</details>
+
+<details>
+<summary><b> 3️⃣ <code>Ingestion</code> - Copy data from external stage to Snowflake tables</b> <i>(click to expand)</i> </summary>
+Setting up the connection between Snowflake and AWS s3 bucket for data ingestion. Refer official documentation <a href="https://docs.snowflake.com/en/user-guide/data-load-s3-config-storage-integration">here</a> for more details
+</details>
+
+<details>
+<summary><b> 4️⃣ <code>Cleaning</code> - Cleaning and restructuring the raw data</b> <i>(click to expand)</i> </summary>
+   ...
+</details>
+
+<details>
+<summary><b> 5️⃣ <code>Transformation</code> - Load data to stage layer and transform</b> <i>(click to expand)</i> </summary>
+   ...
+</details>
+
+<details>
+<summary><b> 6️⃣ <code>Loading</code> - Load data to base tables and implement SCD type 2 in dimension tables</b> <i>(click to expand)</i> </summary>
+   ...
+</details>
+
 ## 3. Copying data from external stage:
 
 Creation of required database objects in snowflake to copy data from AWS s3 bucket (external stage),
