@@ -341,17 +341,124 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
    <img width="1896" height="432" alt="image" src="https://github.com/user-attachments/assets/a9b3c9ab-cbc0-47b8-bb2f-cc9e65cfde84" /><br>
 
    <img width="1897" height="541" alt="image" src="https://github.com/user-attachments/assets/1213a752-c406-4ca9-9726-9d0547275ff0" /><br>
-
-
-   
    
 </details>
 
 <details>
-<summary><b> 3️⃣ <code>Ingestion</code> - Copy data from external stage to Snowflake tables</b> <i>(click to expand)</i> </summary>
-Setting up the connection between Snowflake and AWS s3 bucket for data ingestion. Refer official documentation <a href="https://docs.snowflake.com/en/user-guide/data-load-s3-config-storage-integration">here</a> for more details
-</details>
+<summary><b> 3️⃣ <code>Ingestion</code> - Copy data from external stage to Snowflake tables</b> <i>(click to expand)</i> </summary><br>
+   Setting up the connection between Snowflake and AWS s3 bucket for data ingestion. Refer official documentation <a href="https://docs.snowflake.com/en/user-guide/data-load-s3-config-storage-integration">here</a> for more details<br>
+ 1. Creation of IAM policy for created S3 bucket in AWS with <code>s3:GetBucketLocation</code> <code>s3:GetObject</code> <code>s3:GetObjectVersion</code> <code>s3:ListBucket</code> permissions.<br>
+ <img width="1897" height="732" alt="image" src="https://github.com/user-attachments/assets/ec5401c4-80bd-42d3-a4c2-5496bcaf1c40" /><br>
+ 2. Create an IAM role in AWS as shown below,<br>
+ <img width="1880" height="3102" alt="image" src="https://github.com/user-attachments/assets/9cc18edf-a64b-4ea2-b534-dbab321b326e" /><br>
+ Add temporary Account ID and Require external ID with place holder and replace it with parameters from storage integration as shown above.<br>
+ <img width="1880" height="3140" alt="image" src="https://github.com/user-attachments/assets/5939ae2b-be96-4d3c-b255-c34a833a7cdc" /><br>
+ Add the created policy in permissions as shown above.<br>
+ 3. Create storage integration in snowflake,<br>
 
+ Here, we use Account Admin role for object creation,<br>
+
+Setting up the context,<br>
+```sql
+--Set ACCOUNTADMIN role
+USE ROLE ACCOUNTADMIN;
+
+--Setting context
+USE DATABASE Insurance_project;
+USE SCHEMA raw;
+
+--Checking the region
+SELECT CURRENT_REGION(); --AWS_US_EAST_1
+```
+Creating storage integration to connect snowflake with AWS s3 bucket,
+```sql
+--Storage integration creation
+CREATE STORAGE INTEGRATION insurance_s3_full_access_storage_integration
+TYPE = EXTERNAL_STAGE STORAGE_PROVIDER = 'S3'
+ENABLED = TRUE STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::############:role/insurance_sf_full_access_role' --replace the AWS S3 role arn
+STORAGE_ALLOWED_LOCATIONS = ('*');
+ ```
+Replace the <code>STORAGE_AWS_ROLE_ARN</code> with ARN from created AWS role,<br>
+<img width="1886" height="726" alt="image" src="https://github.com/user-attachments/assets/fe84bcc4-5dcd-4cc8-a3c6-7997a660ee32" /><br>
+
+4. Describe storage integration<br>
+```sql
+DESC INTEGRATION insurance_s3_full_access_storage_integration;
+```
+ <img width="1810" height="407" alt="image" src="https://github.com/user-attachments/assets/204ee03a-a47b-4ba3-bd44-b6814a9e8535" /><br>
+Replace the <code>STORAGE_AWS_IAM_USER_ARN</code> and <code>STORAGE_AWS_EXTERNAL_ID</code> from storage integration in AWS policy as shown below,<br>
+
+<img width="712" height="466" alt="image" src="https://github.com/user-attachments/assets/c5286ddb-c0e5-425f-a76b-8963c4268dae" /><br>
+<img width="1902" height="748" alt="image" src="https://github.com/user-attachments/assets/7b7224bb-127f-4648-be08-82bc2faa46d6" />
+<br>
+5. Creating file format and external stage on AWS s3 bucket to access the files,<br>
+```sql
+--File format creation
+CREATE OR REPLACE FILE FORMAT csv_ff
+SKIP_HEADER = 1
+FIELD_DELIMITER = ','
+RECORD_DELIMITER = '\n'
+FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+--MULTI_LINE = TRUE
+TYPE = CSV;
+
+--External stage creation
+CREATE OR REPLACE STAGE raw_data_full_access
+STORAGE_INTEGRATION = insurance_s3_full_access_storage_integration
+URL = 's3://##########/########/' --S3 URI from S3 bucket
+FILE_FORMAT = csv_ff;
+```
+Replace <code>URL</code> with URI from S3 bucket,<br>
+<img width="1892" height="556" alt="image" src="https://github.com/user-attachments/assets/e14fe6f7-de41-4cb2-a62a-38fb2db7c6e1" /><br>
+
+6. Creating auto ingestion via snow pipe,<br>
+```sql
+
+ --Creation of snowpipe
+CREATE OR REPLACE PIPE p_raw_data_load_central
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*Central.*\.csv';
+
+CREATE OR REPLACE PIPE p_raw_data_load_east
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*East.*\.csv';
+
+CREATE OR REPLACE PIPE p_raw_data_load_west
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*West.*\.csv';
+
+CREATE OR REPLACE PIPE p_raw_data_load_south
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*South.*\.csv';
+```
+7. Enabling auto ingestion via SQS event AWS<br>
+```sql
+--Description of snowpipe
+DESC PIPE p_raw_data_load_central;
+```
+Get <code>notification_channel</code> and add it in AWS S3 bucket - SQS Queue (ARN) to create event notification with SQS queue and below settings as shown below,<br>
+
+<img width="1500" height="658" alt="image" src="https://github.com/user-attachments/assets/9f4f1976-fb74-4ad8-a78e-38d7a1f7ebe0" /><br>
+
+<img width="1877" height="742" alt="image" src="https://github.com/user-attachments/assets/fb193f87-a4f9-4dcf-bf17-38b866b87884" /><br>
+
+<img width="1887" height="272" alt="image" src="https://github.com/user-attachments/assets/5c8aa48f-e6a0-40d5-b806-8e91fc1cf29f" /><br>
+
+Operation and control on snow pipe,<br>
+```sql
+--Status of snowpipe
+SELECT SYSTEM$PIPE_STATUS('p_raw_data_load_central');
+
+--snowpipe operation
+ALTER PIPE p_raw_data_load_central
+SET PIPE_EXECUTION_PAUSED = FALSE;
+
+ALTER PIPE p_raw_data_load_central
+SET PIPE_EXECUTION_PAUSED = TRUE;
+
+ALTER PIPE p_raw_data_load_central REFRESH;
+```
+</details>
 <details>
 <summary><b> 4️⃣ <code>Cleaning</code> - Cleaning and restructuring the raw data</b> <i>(click to expand)</i> </summary>
    ...
@@ -366,57 +473,6 @@ Setting up the connection between Snowflake and AWS s3 bucket for data ingestion
 <summary><b> 6️⃣ <code>Loading</code> - Load data to base tables and implement SCD type 2 in dimension tables</b> <i>(click to expand)</i> </summary>
    ...
 </details>
-
-## 3. Copying data from external stage:
-
-Creation of required database objects in snowflake to copy data from AWS s3 bucket (external stage),
-
-Here, we use Account Admin role for object creation,
-
-Setting up the context,
-```
---Set ACCOUNTADMIN role
-USE ROLE ACCOUNTADMIN;
-
---Setting context
-USE DATABASE Insurance_project;
-USE SCHEMA raw;
-
---Checking the region
-SELECT CURRENT_REGION(); --AWS_US_EAST_1
-```
-Creating storage integration to connect snowflake with AWS s3 bucket,
-```
---Storage integration creation
-CREATE STORAGE INTEGRATION insurance_s3_full_access_storage_integration
-TYPE = EXTERNAL_STAGE STORAGE_PROVIDER = 'S3'
-ENABLED = TRUE STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::866018955955:role/insurance_sf_full_access_role' --AWS role arn
-STORAGE_ALLOWED_LOCATIONS = ('*');
-
-DESC INTEGRATION insurance_s3_full_access_storage_integration;
-
---Required information from storage integration to update the AWS role trust policy
-    --STORAGE_AWS_IAM_USER_ARN = arn:aws:iam::285177568129:user/znb51000-s
-    --STORAGE_AWS_EXTERNAL_ID = GDC17730_SFCRole=7_xQFrQez9wTzDoOvXQjafzxh6F6g=
-```
-Creating file format and external stage on AWS s3 bucket to access the files,
-```
---File format creation
-CREATE OR REPLACE FILE FORMAT csv_ff SKIP_HEADER = 1 FIELD_DELIMITER = ',' RECORD_DELIMITER = '\n' FIELD_OPTIONALLY_ENCLOSED_BY = '"'
---MULTI_LINE = TRUE
-TYPE = CSV;
-
---External stage creation
-CREATE OR REPLACE STAGE raw_data_full_access STORAGE_INTEGRATION = insurance_s3_full_access_storage_integration URL = 's3://insurance-project-raw/CSV-files/' --S3 URI from S3 bucket
-FILE_FORMAT = csv_ff;
-'''
-Creating auto ingestion via snow pipe,
-'''
---Auto ingestion of raw data using SQS event
- --Creation of snowpipe
-CREATE OR REPLACE PIPE raw_data_load_east_003
-AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
-FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*East.*\.csv';
 
 --Description of snowpipe
 DESC PIPE raw_data_load_east_003;
