@@ -28,7 +28,7 @@ This project demonstrates how to build a scalable **data pipeline in Snowflake**
 
 ## 🏗️ Architecture Diagram
 
-<img width="3191" height="1642" alt="Architecture-insurance-snowflake-project" src="https://github.com/user-attachments/assets/119fcfe9-897e-4bc8-8442-dbf5465ce9b7" />
+<img width="3191" height="1642" alt="Architecture-insurance-snowflake-project" src="https://github.com/user-attachments/assets/446f2a13-18cc-42e8-9bfc-3ec6a2ec8f52" />
 
 ## 🧰 Step-by-step guide of implementation
  
