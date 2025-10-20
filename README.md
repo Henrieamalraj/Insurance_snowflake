@@ -4,12 +4,12 @@ A complete end-to-end Snowflake data pipeline demonstrating ingestion, transform
 
 ## Tech Stacks used in this project
 
-<img width="320" height="77" alt="Snowflake_Logo" src="https://github.com/user-attachments/assets/88baf960-dab7-421a-8ca3-0d3f56e7be69" />
+<img width="256" height="61" alt="Snowflake_Logo" src="https://github.com/user-attachments/assets/88baf960-dab7-421a-8ca3-0d3f56e7be69" />
 
 <a href="https://www.snowflake.com/">Snowflake</a> is a cloud-native data platform built for fast, scalable data warehousing and analytics. It separates compute and storage, supports both structured and semi-structured data, and runs on AWS, Azure, and Google Cloud. Snowflake offers secure data sharing, near-zero maintenance, and high performance.
 
 
-<img width="264" height="158" alt="Amazon_Web_Services_Logo" src="https://github.com/user-attachments/assets/ac24f187-e82d-4bfe-ba02-4fc03a4c4b5d" />
+<img width="211" height="126" alt="Amazon_Web_Services_Logo" src="https://github.com/user-attachments/assets/ac24f187-e82d-4bfe-ba02-4fc03a4c4b5d" />
 
 <a href="https://aws.amazon.com/s3/">AWS S3 (Simple Storage Service)</a> is a highly scalable, durable, and secure object storage service for storing and retrieving any amount of data from anywhere. It’s widely used for static website hosting, backups, big data analytics, and cloud-native application storage.
 
@@ -350,9 +350,9 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
  1. Creation of IAM policy for created S3 bucket in AWS with <code>s3:GetBucketLocation</code> <code>s3:GetObject</code> <code>s3:GetObjectVersion</code> <code>s3:ListBucket</code> permissions.<br>
  <img width="1897" height="732" alt="image" src="https://github.com/user-attachments/assets/ec5401c4-80bd-42d3-a4c2-5496bcaf1c40" /><br>
  2. Create an IAM role in AWS as shown below,<br>
- <img width="1880" height="3102" alt="image" src="https://github.com/user-attachments/assets/9cc18edf-a64b-4ea2-b534-dbab321b326e" /><br>
+ <img width="962" height="1587" alt="image" src="https://github.com/user-attachments/assets/9cc18edf-a64b-4ea2-b534-dbab321b326e" /><br>
  Add temporary Account ID and Require external ID with place holder and replace it with parameters from storage integration as shown above.<br>
- <img width="1880" height="3140" alt="image" src="https://github.com/user-attachments/assets/5939ae2b-be96-4d3c-b255-c34a833a7cdc" /><br>
+ <img width="962" height="1587" alt="image" src="https://github.com/user-attachments/assets/5939ae2b-be96-4d3c-b255-c34a833a7cdc" /><br>
  Add the created policy in permissions as shown above.<br>
  3. Create storage integration in snowflake,<br>
 
@@ -409,7 +409,7 @@ URL = 's3://##########/########/' --S3 URI from S3 bucket
 FILE_FORMAT = csv_ff;
 ```
 Replace <code>URL</code> with URI from S3 bucket,<br>
-<img width="1892" height="556" alt="image" src="https://github.com/user-attachments/assets/e14fe6f7-de41-4cb2-a62a-38fb2db7c6e1" /><br>
+<img width="1229" height="361" alt="image" src="https://github.com/user-attachments/assets/e14fe6f7-de41-4cb2-a62a-38fb2db7c6e1" /><br>
 
 6. Creating auto ingestion via snow pipe,<br>
 ```sql
