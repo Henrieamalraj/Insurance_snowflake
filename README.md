@@ -246,6 +246,12 @@ CREATE OR REPLACE STREAM CUSTOMER_STREAM_UPDATE ON TABLE INSURANCE_PROJECT.STG.S
 CREATE OR REPLACE STREAM POLICY_STREAM_UPDATE ON TABLE INSURANCE_PROJECT.STG.STG_POLICY_D;
 
 CREATE OR REPLACE STREAM ADDRESS_STREAM_UPDATE ON TABLE INSURANCE_PROJECT.STG.STG_ADDRESS_D;
+
+CREATE OR REPLACE STREAM CUSTOMER_STREAM ON TABLE INSURANCE_PROJECT.STG.STG_CUSTOMER_D;
+
+CREATE OR REPLACE STREAM POLICY_STREAM ON TABLE INSURANCE_PROJECT.STG.STG_POLICY_D;
+
+CREATE OR REPLACE STREAM ADDRESS_STREAM ON TABLE INSURANCE_PROJECT.STG.STG_ADDRESS_D;
 ```
 
 Creation of sequence generators,
@@ -416,7 +422,7 @@ Replace <code>URL</code> with URI from S3 bucket,<br>
 
  --Creation of snowpipe
 CREATE OR REPLACE PIPE p_raw_data_load_central
-AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_OTHERS
+AUTO_INGEST = TRUE AS COPY INTO INSURANCE_PROJECT.RAW.RAW_US_CENTRAL
 FROM @raw_data_full_access FILE_FORMAT = csv_ff PATTERN = '.*Central.*\.csv';
 
 CREATE OR REPLACE PIPE p_raw_data_load_east
@@ -461,7 +467,136 @@ ALTER PIPE p_raw_data_load_central REFRESH;
 </details>
 <details>
 <summary><b> 4️⃣ <code>Cleaning</code> - Cleaning and restructuring the raw data</b> <i>(click to expand)</i> </summary>
-   ...
+  With auto - ingestion data are refreshed in <code>INSURANCE_PROJECT.RAW.RAW_US_CENTRAL</code> and <code>INSURANCE_PROJECT.RAW.RAW_US_OTHERS</code> (raw data from East,West and South).<br>
+ Restructing the data and loading into <code>INSURANCE_PROJECT.RAW.RAW_US_MERGED</code> using below queries,
+ 
+```sql
+ --Set ACCOUNTADMIN role
+USE role accountadmin;
+--Setting context
+USE database insurance_project;
+USE SCHEMA raw;
+--Creating streams for raw tables
+CREATE OR REPLACE STREAM RAW_US_CENTRAL_STREAM ON TABLE INSURANCE_PROJECT.RAW.RAW_US_CENTRAL;
+
+CREATE OR REPLACE STREAM RAW_US_CENTRAL_STREAM ON TABLE INSURANCE_PROJECT.RAW.RAW_US_OTHERS;
+```
+Creation of stored procedure,
+```sql
+--Creating stored procedure to execute truncate and insert
+CREATE OR REPLACE PROCEDURE SP_RAW_US_MERGED()
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS
+$$
+DECLARE
+truncate_query VARCHAR;
+insert_query VARCHAR;
+BEGIN
+--Truncate the merged raw table
+truncate_query := 'TRUNCATE insurance_project.raw.raw_us_merged;';
+--Load the data into merged table (without duplicates,type casted and restructured)
+insert_query:= 'INSERT INTO insurance_project.raw.raw_us_merged
+            (
+                   select "Customer ID",
+                                 concat( "Customer Title", '' '', "Customer First Name", '' '', "Customer Last Name" ) AS "Customer Name",
+                          "Customer Title",
+                          "Customer First Name",
+                          "Customer Middle Name",
+                          "Customer Last Name",
+                          "Customer_Segment",
+                          "Maritial_Status",
+                          "Gender",
+                          to_date(replace("DOB", ''/'', ''-''), ''MM-DD-YYYY'')                  AS "DOB",
+                          to_date( replace("Effective_Start_Dt", ''/'', ''-''), ''MM-DD-YYYY'' ) AS "Effective_Start_Dt",
+                          to_date( replace("Effective_End_Dt", ''/'', ''-''), ''MM-DD-YYYY'' )   AS "Effective_End_Dt",
+                          "Policy_Type_Id",
+                          "Policy_Type",
+                          "Policy_Type_Desc",
+                          "Policy_Id",
+                          "Policy_Name",
+                          "Premium_Amt",
+                          "Policy_Term",
+                          to_date(replace("Policy_Start_Dt", ''/'', ''-''), ''MM-DD-YYYY'')          AS "Policy_Start_Dt",
+                          to_date(replace("Policy_End_Dt", ''/'', ''-''), ''MM-DD-YYYY'')            AS "Policy_End_Dt",
+                          to_date(replace("Next_Premium_Dt", ''/'', ''-''), ''MM-DD-YYYY'')          AS "Next_Premium_Dt",
+                          to_date( replace("Actual_Premium_Paid_Dt", ''/'', ''-''), ''MM-DD-YYYY'' ) AS "Actual_Premium_Paid_Dt",
+                          ''USA''                                                                AS "Country",
+                          "Region",
+                          "State or Province",
+                          "City",
+                          "Postal Code",
+                          "Total_Policy_Amt",
+                          "Premium_Amt_Paid_TillDate"
+                   FROM   insurance_project.raw.RAW_US_CENTRAL_STREAM
+            )
+     UNION
+           (
+                  SELECT * exclude("Customer_split")
+                  FROM   (
+                                SELECT "Customer ID",
+                                       "Customer Name",
+                                       (split("Customer Name", '' '')) AS "Customer_split",
+                                       to_char("Customer_split" [0]) AS "Customer Title",
+                                       to_char("Customer_split" [1]) AS "Customer First Name",
+                                       --Logic to split middle and last name as few names dowsn''t have middle name
+                                       CASE
+                                              WHEN array_size("Customer_split") = 4 THEN to_char("Customer_split" [2])
+                                              ELSE NULL
+                                       END AS "Customer Middle Name",
+                                       CASE
+                                              WHEN array_size("Customer_split") = 3 THEN to_char("Customer_split" [2])
+                                              WHEN array_size("Customer_split") = 4 THEN to_char("Customer_split" [3])
+                                              ELSE NULL
+                                       END AS "Customer Last Name",
+                                       "Customer_Segment",
+                                       "Maritial_Status",
+                                       "Gender",
+                                       to_date(replace("DOB", ''/'', ''-''), ''MM-DD-YYYY'')                  AS "DOB",
+                                       to_date( replace("Effective_Start_Dt", ''/'', ''-''), ''MM-DD-YYYY'' ) AS "Effective_Start_Dt",
+                                       to_date( replace("Effective_End_Dt", ''/'', ''-''), ''MM-DD-YYYY'' )   AS "Effective_End_Dt",
+                                       "Policy_Type_Id",
+                                       "Policy_Type",
+                                       "Policy_Type_Desc",
+                                       "Policy_Id",
+                                       "Policy_Name",
+                                       "Premium_Amt",
+                                       "Policy_Term",
+                                       to_date(replace("Policy_Start_Dt", ''/'', ''-''), ''MM-DD-YYYY'')          AS "Policy_Start_Dt",
+                                       to_date(replace("Policy_End_Dt", ''/'', ''-''), ''MM-DD-YYYY'')            AS "Policy_End_Dt",
+                                       to_date(replace("Next_Premium_Dt", ''/'', ''-''), ''MM-DD-YYYY'')          AS "Next_Premium_Dt",
+                                       to_date( replace("Actual_Premium_Paid_Dt", ''/'', ''-''), ''MM-DD-YYYY'' ) AS "Actual_Premium_Paid_Dt",
+                                       ''USA''                                                                AS "Country",
+                                       "Region",
+                                       "State or Province",
+                                       "City",
+                                       "Postal Code",
+                                       "Total_Policy_Amt",
+                                       "Premium_Amt_Paid_TillDate"
+                                FROM   insurance_project.raw.RAW_US_OTHERS_STREAM ) );';
+EXECUTE IMMEDIATE truncate_query;
+EXECUTE IMMEDIATE insert_query;
+return 'inserted successfully';
+END;
+$$;
+
+CALL SP_RAW_US_MERGED();
+```
+Creation of task to auto refresh merged table,
+```sql
+--Creating task to auto refresh merged table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.RAW.T_RAW_US_MERGED
+WAREHOUSE = COMPUTE_WH
+WHEN SYSTEM$STREAM_HAS_DATA('insurance_project.raw.RAW_US_CENTRAL_STREAM')
+OR
+SYSTEM$STREAM_HAS_DATA('insurance_project.raw.RAW_US_OTHERS_STREAM')
+AS
+CALL SP_RAW_US_MERGED();
+
+--To resume the task
+ALTER TASK INSURANCE_PROJECT.RAW.T_RAW_US_MERGED RESUME;
+```
 </details>
 
 <details>
