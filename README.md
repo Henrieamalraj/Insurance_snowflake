@@ -197,6 +197,7 @@ CREATE OR REPLACE TABLE STG_POLICY_D (
 /*###############################################    STG_ADDRESS_D   ###############################################*/
 
 CREATE OR REPLACE TABLE STG_ADDRESS_D (
+    "Address_ID" NUMBER,
     "Country" VARCHAR(500),
     "Region" VARCHAR(500),
     "State" VARCHAR(500),
@@ -305,6 +306,8 @@ CREATE OR REPLACE TABLE POLICY_D (
     "Policy_Term" VARCHAR (500),
     "Policy_Start_Date" DATE,
     "Policy_Completion_Date" DATE,
+    "LAST_INSERT_DT" TIMESTAMP,
+    "LAST_UPDATE_DT" TIMESTAMP,
     "X_SCD_ID" INT
 );
 
@@ -312,11 +315,14 @@ CREATE OR REPLACE TABLE POLICY_D (
 
 CREATE OR REPLACE TABLE ADDRESS_D (
     "SCD_ID" INT DEFAULT INSURANCE_PROJECT.INSURANCE.ADDRESS_SEQ.NEXTVAL PRIMARY KEY,
+    "Address_ID" NUMBER,
     "Country" VARCHAR(500),
     "Region" VARCHAR(500),
     "State" VARCHAR(500),
     "City" VARCHAR(500),
     "Postal_Code" NUMBER,
+    "LAST_INSERT_DT" TIMESTAMP,
+    "LAST_UPDATE_DT" TIMESTAMP,
     "X_SCD_ID" INT
 );
 
@@ -329,6 +335,7 @@ CREATE OR REPLACE TABLE TRANSACTION_F (
     "Total_policy_Amount" NUMBER(38, 2),
     "Premium_Amount" NUMBER(38, 2),
     "Premium_Amount_Paid_till_Date" NUMBER(38, 2),
+    "LAST_INSERT_DT" TIMESTAMP,
     FOREIGN KEY ("CUS_SCD_ID") REFERENCES INSURANCE_PROJECT.INSURANCE.CUSTOMER_D("SCD_ID"),
     FOREIGN KEY ("POL_SCD_ID") REFERENCES INSURANCE_PROJECT.INSURANCE.POLICY_D ("SCD_ID"),
     FOREIGN KEY ("ADD_SCD_ID") REFERENCES INSURANCE_PROJECT.INSURANCE.ADDRESS_D ("SCD_ID")
@@ -479,7 +486,7 @@ USE SCHEMA raw;
 --Creating streams for raw tables
 CREATE OR REPLACE STREAM RAW_US_CENTRAL_STREAM ON TABLE INSURANCE_PROJECT.RAW.RAW_US_CENTRAL;
 
-CREATE OR REPLACE STREAM RAW_US_CENTRAL_STREAM ON TABLE INSURANCE_PROJECT.RAW.RAW_US_OTHERS;
+CREATE OR REPLACE STREAM RAW_US_OTHERS_STREAM ON TABLE INSURANCE_PROJECT.RAW.RAW_US_OTHERS;
 ```
 Creation of stored procedure,
 ```sql
@@ -600,13 +607,418 @@ ALTER TASK INSURANCE_PROJECT.RAW.T_RAW_US_MERGED RESUME;
 </details>
 
 <details>
-<summary><b> 5️⃣ <code>Transformation</code> - Load data to stage layer and transform</b> <i>(click to expand)</i> </summary>
-   ...
+<summary><b> 5️⃣ <code>Stage load</code> - Cast and load data to stage layer</b> <i>(click to expand)</i> </summary>
+Setting context,
+ 
+ ```sql
+ --Set ACCOUNTADMIN role
+USE ROLE ACCOUNTADMIN;
+--Setting context
+USE DATABASE Insurance_project;
+USE SCHEMA stg;
+```
+Loading stage tables with appropriate data types,<br>
+Customer dimension stage table loading,	
+
+```sql
+--Creating stored procedure to execute truncate and insert
+CREATE OR REPLACE PROCEDURE SP_STG_CUSTOMER_D()
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS
+$$
+DECLARE
+truncate_query VARCHAR;
+insert_query VARCHAR;
+BEGIN
+--Truncate the merged raw table
+truncate_query:='TRUNCATE INSURANCE_PROJECT.STG.STG_CUSTOMER_D;';
+insert_query:='INSERT INTO
+    INSURANCE_PROJECT.STG.STG_CUSTOMER_D
+SELECT
+    DISTINCT "Customer ID" AS "Customer_ID",
+    INITCAP("Customer Name") AS "Customer_Name",
+    "Customer_Segment" AS "Customer_Segment",
+    "Maritial_Status" AS "Marital_Status",
+    "Gender" AS "Gender",
+    "DOB" AS "Date_of_Birth"
+FROM
+    INSURANCE_PROJECT.RAW.RAW_US_MERGED;';
+EXECUTE IMMEDIATE truncate_query;
+EXECUTE IMMEDIATE insert_query;
+return 'inserted successfully';
+END;
+$$;
+
+--Creating task to auto refresh stage table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.STG.T_STG_CUSTOMER_D
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.RAW.T_RAW_US_MERGED
+AS
+CALL SP_STG_CUSTOMER_D();
+```
+
+Policy dimension stage table loading,
+
+```sql
+--Creating stored procedure to execute truncate and insert
+CREATE OR REPLACE PROCEDURE SP_STG_POLICY_D()
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS
+$$
+DECLARE
+truncate_query VARCHAR;
+insert_query VARCHAR;
+BEGIN
+--Truncate the merged raw table
+truncate_query:='TRUNCATE INSURANCE_PROJECT.STG.STG_POLICY_D;';
+insert_query:='INSERT INTO
+    INSURANCE_PROJECT.STG.STG_POLICY_D
+SELECT
+    DISTINCT "Policy_Type_Id" AS "Policy_Id",
+    (SUBSTR("Policy_Id", POSITION('_', "Policy_Id") + 1)) AS "Policy_Code",
+    "Policy_Name" AS "Policy_Name",
+    "Policy_Type" AS "Policy_Type",
+    "Policy_Type_Desc" AS "Policy_Type_Description",
+    "Policy_Term" AS "Policy_Term",
+    "Policy_Start_Dt" AS "Policy_Start_Date",
+    "Policy_End_Dt" AS "Policy_Completion_Date"
+FROM
+    INSURANCE_PROJECT.RAW.RAW_US_MERGED;';
+EXECUTE IMMEDIATE truncate_query;
+EXECUTE IMMEDIATE insert_query;
+return 'inserted successfully';
+END;
+$$;
+
+--Creating task to auto refresh stage table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.STG.T_STG_POLICY_D
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.RAW.T_RAW_US_MERGED
+AS
+CALL SP_STG_POLICY_D();
+```
+Address dimension stage table loading,
+
+```sql
+--Creating stored procedure to execute truncate and insert
+CREATE OR REPLACE PROCEDURE SP_STG_ADDRESS_D()
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS
+$$
+DECLARE
+truncate_query VARCHAR;
+insert_query VARCHAR;
+BEGIN
+--Truncate the merged raw table
+truncate_query:='TRUNCATE INSURANCE_PROJECT.STG.STG_ADDRESS_D;';
+insert_query:='INSERT INTO
+    INSURANCE_PROJECT.STG.STG_ADDRESS_D
+SELECT
+    DISTINCT
+    "Customer_ID" AS "Address_ID",
+    "Country" AS "Country",
+    "Region" AS "Region",
+    "State or Province" AS "State",
+    "City" AS "City",
+    "Postal Code" AS "Postal_Code"
+FROM
+    INSURANCE_PROJECT.RAW.RAW_US_MERGED;';
+EXECUTE IMMEDIATE truncate_query;
+EXECUTE IMMEDIATE insert_query;
+return 'inserted successfully';
+END;
+$$;
+
+--Creating task to auto refresh stage table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.STG.T_STG_ADDRESS_D
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.RAW.T_RAW_US_MERGED
+AS
+CALL SP_STG_ADDRESS_D();
+```
+
+Transaction fact stage table loading,
+
+```sql
+--Creating stored procedure to execute truncate and insert
+CREATE OR REPLACE PROCEDURE SP_STG_TRANSACTION_F()
+RETURNS VARCHAR
+LANGUAGE SQL
+EXECUTE AS OWNER
+AS
+$$
+DECLARE
+truncate_query VARCHAR;
+insert_query VARCHAR;
+BEGIN
+--Truncate the merged raw table
+truncate_query:='TRUNCATE INSURANCE_PROJECT.STG.STG_TRANSACTION_F;';
+insert_query:='INSERT INTO
+    INSURANCE_PROJECT.STG.STG_TRANSACTION_F
+SELECT
+    DISTINCT "Customer ID" AS "Customer_ID",
+    INITCAP("Customer Name") AS "Customer_Name",
+    "Total_Policy_Amt" AS "Total_policy_Amount",
+    "Premium_Amt" AS "Premium_Amount",
+    "Premium_Amt_Paid_TillDate" AS "Premium_Amount_Paid_till_Date",
+    "Country" AS "Country",
+    "Region" AS "Region",
+    "State or Province" AS "State",
+    "City" AS "City",
+    "Postal Code" AS "Postal_Code"
+FROM
+    INSURANCE_PROJECT.RAW.RAW_US_MERGED;';
+EXECUTE IMMEDIATE truncate_query;
+EXECUTE IMMEDIATE insert_query;
+return 'inserted successfully';
+END;
+$$;
+
+--Creating task to auto refresh stage table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.STG.T_STG_TRANSACTION_F
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.RAW.T_RAW_US_MERGED
+AS
+CALL SP_STG_TRANSACTION_F();
+```
 </details>
 
 <details>
-<summary><b> 6️⃣ <code>Loading</code> - Load data to base tables and implement SCD type 2 in dimension tables</b> <i>(click to expand)</i> </summary>
-   ...
+<summary><b> 6️⃣ <code>Transformation</code> - Load data to base tables and implement SCD type 2 in dimension tables</b> <i>(click to expand)</i> </summary>
+SCD 2 implementation to handle new inserts and updates via stored procedure<br>
+Customer dimension table loading,
+ 
+```sql
+
+ --Creation of stored procedure
+CREATE OR REPLACE PROCEDURE SP_CUSTOMER_D_SCD2()
+    RETURNS VARCHAR
+    LANGUAGE SQL
+    AS 
+    DECLARE 
+    V_MERGE_QUERY VARCHAR;
+    V_INSERT_QUERY VARCHAR;
+    V_XSCD_QUERY VARCHAR;
+    RES RESULTSET;
+BEGIN 
+ V_MERGE_QUERY := 'MERGE INTO INSURANCE_PROJECT.INSURANCE.CUSTOMER_D T
+    USING INSURANCE_PROJECT.STG.CUSTOMER_STREAM_INSERT S
+    ON T."Customer_ID" = S."Customer_ID" 
+    AND T."CURRENT_FLG" = ''Y''
+    
+    --Updates the existing record changes (CURRENT_FLG to ''N'')
+    
+    WHEN MATCHED AND (
+    S."Customer_Name" <> T."Customer_Name"
+    OR S."Customer_Segment" <> T."Customer_Segment"
+    OR S."Marital_Status" <> T."Marital_Status"
+    OR S."Gender" <> T."Gender"
+    OR S."Date_of_Birth" <> T."Date_of_Birth"
+    AND S.METADATA$ACTION = ''INSERT'' 
+    AND  S.METADATA$ISUPDATE = ''FALSE'' ) -- If stage table is persistent incremental table, then S.METADATA$ACTION = ''DELETE'' AND S.METADATA$ISUPDATE = ''TRUE''
+    THEN
+    UPDATE SET T."LAST_UPDATE_DT" = CURRENT_TIMESTAMP(), T."CURRENT_FLG" = ''N''
+    
+    --Inserts new records 
+    
+    WHEN NOT MATCHED THEN
+    INSERT ("Customer_ID",
+    "Customer_Name",
+    "Customer_Segment",
+    "Marital_Status", 
+    "Gender", 
+    "Date_of_Birth",
+    "CURRENT_FLG",
+    "LAST_INSERT_DT",
+    "LAST_UPDATE_DT")
+    VALUES (S."Customer_ID",
+    S."Customer_Name", 
+    S."Customer_Segment", 
+    S."Marital_Status", 
+    S."Gender", 
+    S."Date_of_Birth",
+    ''Y'',
+    CURRENT_TIMESTAMP(),
+    CURRENT_TIMESTAMP());';
+V_INSERT_QUERY := '-- Insert new versions for updated records (with CURRENT_FLG to ''Y'')
+    
+    INSERT INTO INSURANCE_PROJECT.INSURANCE.CUSTOMER_D (
+    "Customer_ID",
+    "Customer_Name",
+    "Customer_Segment",
+    "Marital_Status",
+    "Gender",
+    "Date_of_Birth",
+    "CURRENT_FLG",
+    "LAST_INSERT_DT",
+    "LAST_UPDATE_DT")
+    SELECT
+    S."Customer_ID",
+    S."Customer_Name", 
+    S."Customer_Segment", 
+    S."Marital_Status", 
+    S."Gender", 
+    S."Date_of_Birth",
+    ''Y'',
+    CURRENT_TIMESTAMP(),
+    CURRENT_TIMESTAMP()
+    FROM INSURANCE_PROJECT.STG.CUSTOMER_STREAM_UPDATE S
+    JOIN INSURANCE_PROJECT.INSURANCE.CUSTOMER_D T 
+    ON T."Customer_ID" = S."Customer_ID" 
+    AND T."CURRENT_FLG" = ''N'' 
+    WHERE S.METADATA$ACTION = ''INSERT'' 
+    AND S.METADATA$ISUPDATE = ''FALSE''; -- If stage table is persistent incremental table, then S.METADATA$ACTION = ''INSERT'' AND S.METADATA$ISUPDATE = ''TRUE'';';
+
+V_XSCD_QUERY := 'UPDATE
+    INSURANCE_PROJECT.INSURANCE.CUSTOMER_D AS D
+SET
+    D."X_SCD_ID" = X."X_SCD_ID",
+    D."LAST_UPDATE_DT" = CURRENT_TIMESTAMP()
+FROM
+    ( SELECT
+            "Customer_ID",
+            MIN(SCD_ID) AS "X_SCD_ID"
+        FROM INSURANCE_PROJECT.INSURANCE.CUSTOMER_D D, CUSTOMER_STREAM S
+		WHERE D."Customer_ID" = S."Customer_ID"
+        GROUP BY
+            "Customer_ID"
+        ORDER BY
+            "Customer_ID") AS X
+WHERE
+    D."Customer_ID" = X."Customer_ID";';
+RES := (EXECUTE IMMEDIATE V_MERGE_QUERY);
+RES := (EXECUTE IMMEDIATE V_INSERT_QUERY);
+RES := (EXECUTE IMMEDIATE V_XSCD_QUERY);
+RETURN 'SCD 2 implemented';
+END;
+--Creating task to auto refresh base table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.INSURANCE.T_CUSTOMER_D
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.STG.T_STG_CUSTOMER_D
+AS
+CALL SP_CUSTOMER_D_SCD2();
+ ```
+Address dimension table loading,
+```sql
+
+ --Creation of stored procedure
+CREATE OR REPLACE PROCEDURE SP_ADDRESS_D_SCD2()
+    RETURNS VARCHAR
+    LANGUAGE SQL
+    AS 
+    DECLARE 
+    V_MERGE_QUERY VARCHAR;
+    V_INSERT_QUERY VARCHAR;
+    V_XSCD_QUERY VARCHAR;
+    RES RESULTSET;
+BEGIN 
+ V_MERGE_QUERY := 'MERGE INTO INSURANCE_PROJECT.INSURANCE.ADDRESS_D T
+    USING INSURANCE_PROJECT.STG.ADDRESS_STREAM_INSERT S
+    ON T."Address_ID" = S."Address_ID" 
+    AND T."CURRENT_FLG" = ''Y''
+    
+    --Updates the existing record changes (CURRENT_FLG to ''N'')
+    
+    WHEN MATCHED AND (
+    S."Country" <> T."Country"
+    OR S."Region" <> T."Region"
+    OR S."Marital_Status" <> T."Marital_Status"
+    OR S."State" <> T."State"
+    OR S."City" <> T."City"
+	OR S."Postal_Code"<>T."Postal_Code"
+    AND S.METADATA$ACTION = ''INSERT'' 
+    AND  S.METADATA$ISUPDATE = ''FALSE'' ) -- If stage table is persistent incremental table, then S.METADATA$ACTION = ''DELETE'' AND S.METADATA$ISUPDATE = ''TRUE''
+    THEN
+    UPDATE SET T."LAST_UPDATE_DT" = CURRENT_TIMESTAMP(), T."CURRENT_FLG" = ''N''
+    
+    --Inserts new records 
+    
+    WHEN NOT MATCHED THEN
+    INSERT (
+	"Address_ID",
+    "Country",
+    "Region",
+    "State",
+    "City",
+    "Postal_Code",
+    "CURRENT_FLG",
+    "LAST_INSERT_DT",
+    "LAST_UPDATE_DT")
+    VALUES (
+	S."Address_ID",
+    S."Country",
+    S."Region",
+    S."State",
+    S."City",
+    S."Postal_Code",
+    ''Y'',
+    CURRENT_TIMESTAMP(),
+    CURRENT_TIMESTAMP());';
+V_INSERT_QUERY := '-- Insert new versions for updated records (with CURRENT_FLG to ''Y'')
+    
+    INSERT INTO INSURANCE_PROJECT.INSURANCE.ADDRESS_D (
+    "Address_ID",
+    "Country",
+    "Region",
+    "State",
+    "City",
+    "Postal_Code",
+    "CURRENT_FLG",
+    "LAST_INSERT_DT",
+    "LAST_UPDATE_DT")
+    SELECT
+	S."Address_ID",
+    S."Country",
+    S."Region",
+    S."State",
+    S."City",
+    S."Postal_Code",
+    ''Y'',
+    CURRENT_TIMESTAMP(),
+    CURRENT_TIMESTAMP()
+    FROM INSURANCE_PROJECT.STG.ADDRESS_STREAM_UPDATE S
+    JOIN INSURANCE_PROJECT.INSURANCE.CUSTOMER_D T 
+    ON T."Address_ID" = S."Address_ID" 
+    AND T."CURRENT_FLG" = ''N'' 
+    WHERE S.METADATA$ACTION = ''INSERT'' 
+    AND S.METADATA$ISUPDATE = ''FALSE''; -- If stage table is persistent incremental table, then S.METADATA$ACTION = ''INSERT'' AND S.METADATA$ISUPDATE = ''TRUE'';';
+
+V_XSCD_QUERY := 'UPDATE
+    INSURANCE_PROJECT.INSURANCE.ADDRESS_D AS D
+SET
+    D."X_SCD_ID" = X."X_SCD_ID",
+    D."LAST_UPDATE_DT" = CURRENT_TIMESTAMP()
+FROM
+    ( SELECT
+            "ADDRESS_ID",
+            MIN(SCD_ID) AS "X_SCD_ID"
+        FROM INSURANCE_PROJECT.INSURANCE.ADDRESS_D D, ADDRESS_STREAM S
+		WHERE D."Address_ID" = S."Address_ID"
+        GROUP BY
+            "Address_ID"
+        ORDER BY
+            "Address_ID") AS X
+WHERE
+    D."Address_ID" = X."Address_ID";';
+RES := (EXECUTE IMMEDIATE V_MERGE_QUERY);
+RES := (EXECUTE IMMEDIATE V_INSERT_QUERY);
+RES := (EXECUTE IMMEDIATE V_XSCD_QUERY);
+RETURN 'SCD 2 implemented';
+END;
+--Creating task to auto refresh base table
+CREATE OR REPLACE TASK INSURANCE_PROJECT.INSURANCE.T_ADDRESS_D
+WAREHOUSE = COMPUTE_WH
+AFTER INSURANCE_PROJECT.STG.T_STG_ADDRESS_D
+AS
+CALL SP_ADDRESS_D_SCD2();
+
+```
 </details>
 
 ## 📧 Contact
